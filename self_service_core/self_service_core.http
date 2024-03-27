@@ -1,0 +1,6 @@
+@self_service_core_HostAddress = http://localhost:5157
+
+GET {{self_service_core_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
