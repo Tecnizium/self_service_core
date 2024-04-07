@@ -57,7 +57,7 @@ public class OrderController : ControllerBase
     public async Task<IActionResult> CardNumberAvailable(int cardNumber)
     {
         var order = await _mongoDbService.GetLastOrderByCardNumber(cardNumber);
-        if (order == null || order.Status == OrderStatus.Paid || order.Status == OrderStatus.Canceled || order.Status == OrderStatus.Processing)
+        if (order == null || order.Status == OrderStatus.Paid || order.Status == OrderStatus.Canceled)
         {
             return Ok(true);
         }
@@ -93,6 +93,11 @@ public class OrderController : ControllerBase
         if (order != null && order.SecurityCode != securityCode)
         {
             return Unauthorized();
+        }
+
+        if (order is { Status: OrderStatus.Processing })
+        {
+            return BadRequest("Order is processing");
         }
 
         return Ok(order);

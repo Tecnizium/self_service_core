@@ -11,6 +11,7 @@ public class ItemController : Controller
 {
     private readonly ILogger<ItemController> _logger;
     private readonly IMongoDbService _mongoDbService;
+    private readonly string _imagePath = "http://192.168.0.100:5000";
     
     public ItemController(ILogger<ItemController> logger, IMongoDbService mongoDbService)
     {
@@ -56,7 +57,7 @@ public class ItemController : Controller
 
         if (item != null)
         {
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", item.Image);
+            var filePath = Path.Combine(_imagePath, "images", item.Image);
             item.Image = filePath;
         }
         return Ok(item);
@@ -71,7 +72,11 @@ public class ItemController : Controller
         //Get image
         foreach (var item in items)
         {
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", item.Image);
+            var filePath = Path.Combine(_imagePath, "images", item.Image);
+            
+            //add url
+            //item.Image = "https://localhost:5000/" + filePath;
+            
             item.Image = filePath;
         }
         
@@ -87,7 +92,7 @@ public class ItemController : Controller
         //Get image
         foreach (var item in items)
         {
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", item.Image);
+            var filePath = Path.Combine(_imagePath, "images", item.Image);
             item.Image = filePath;
         }
         
@@ -103,7 +108,7 @@ public class ItemController : Controller
         //Get image
         foreach (var item in items)
         {
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", item.Image);
+            var filePath = Path.Combine(_imagePath, "images", item.Image);
             item.Image = filePath;
         }
         
@@ -119,7 +124,7 @@ public class ItemController : Controller
         //Get image
         foreach (var item in items)
         {
-            var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", item.Image);
+            var filePath = Path.Combine(_imagePath, "images", item.Image);
             item.Image = filePath;
         }
         
