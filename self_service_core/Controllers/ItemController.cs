@@ -1,3 +1,5 @@
+using System.Net;
+using System.Net.Sockets;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using self_service_core.DTOs;
@@ -11,12 +13,13 @@ public class ItemController : Controller
 {
     private readonly ILogger<ItemController> _logger;
     private readonly IMongoDbService _mongoDbService;
-    private readonly string _imagePath = "http://192.168.0.100:5000";
+    private readonly string _imagePath;
     
     public ItemController(ILogger<ItemController> logger, IMongoDbService mongoDbService)
     {
         _logger = logger;
         _mongoDbService = mongoDbService;
+        _imagePath = "http://"+ Dns.GetHostAddresses(Dns.GetHostName()).FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork).ToString() + ":5000/";
     }
     
     private string SaveImage(IFormFile image)

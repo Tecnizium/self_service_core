@@ -10,24 +10,31 @@ namespace self_service_core.Services;
 public class PrinterService : IPrinterService
 {
     
-    private readonly ImmediateNetworkPrinter? _networkPrinter;
-    private readonly SerialPrinter? _serialPrinter;
+    private readonly BasePrinter? _printer;
+    private readonly ICommandEmitter e;
     
     public PrinterService(PrinterModel printer)
     {
         // verify if host is IP
         if (!IPAddress.TryParse(printer.Host, out _))
         {
-            _serialPrinter = new SerialPrinter(portName: printer.Host, baudRate: int.Parse(printer.Port));
+            _printer = new SerialPrinter(portName: printer.Host, baudRate: int.Parse(printer.Port));
         }
         else
         {
-            _networkPrinter = new ImmediateNetworkPrinter(new ImmediateNetworkPrinterSettings() { ConnectionString = $"{printer.Host}:{printer.Port}", PrinterName = "TestPrinter" });
+            _printer = new NetworkPrinter(new NetworkPrinterSettings() { ConnectionString = $"{printer.Host}:{printer.Port}" });
         }
+
+        e = new EPSON();
+        
+        
+        var factory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
+        var logger = factory.CreateLogger<Program>();
+        ESCPOS_NET.Logging.Logger = logger;
     }
 
 
-    public async Task Print(OrderItemModel orderItem)
+    public Task Print(OrderItemModel orderItem)
     {
         //PT-BR
         var encoding = System.Text.Encoding.GetEncoding("UTF-8");
@@ -60,14 +67,14 @@ public class PrinterService : IPrinterService
             ]
         );
         
-        await SendToPrinter(print, e);
-       
+        SendToPrinter(print, e);
+        return Task.CompletedTask;
     }
     
-    public async Task Print(OrderModel order)
+    public Task Print(OrderModel order)
     {
         var encoding = System.Text.Encoding.GetEncoding("UTF-8");
-        var e = new EPSON();
+        
         var print = ByteSplicer.Combine([
                 e.CenterAlign(),
                 e.PrintLine("--------------------------------------------------"),
@@ -84,7 +91,7 @@ public class PrinterService : IPrinterService
                 e.CenterAlign(),
                 e.PrintLine("--------------------------------------------------"),
                 e.LeftAlign(),
-                e.PrintLine("Total: R$ "+ order.Total),
+                e.PrintLine("Total: R$ "+ order.Total?.ToString("F2")),
                 e.CenterAlign(),
                 e.PrintLine("--------------------------------------------------"),
                 encoding.GetBytes("Obrigado pela preferência!"),
@@ -94,36 +101,64 @@ public class PrinterService : IPrinterService
             ]
         );
         
-        await SendToPrinter(print, e);
+        SendToPrinter(print, e);
+        return Task.CompletedTask;
     }
-    
-    private async Task SendToPrinter(byte[] print, ICommandEmitter e)
+
+    private void SendToPrinter(byte[] print, ICommandEmitter e)
     {
-        testPrint(print);
-        
-        if (_networkPrinter != null)
+        //testPrint(print);
+
+        if (_printer is NetworkPrinter)
         {
-            var isOnline = await _networkPrinter.GetOnlineStatus(e);
+           
+                
+            _printer.Write(e.Initialize());
+            _printer.Write(e.Enable());
+            _printer.Write(e.EnableAutomaticStatusBack());
+            Setup(true);
+            
+            var isOnline = true;
+                           //_printer.GetStatus().IsPrinterOnline ?? false;
+
             if (!isOnline)
             {
-                //throw new Exception("Impressora offline");
+                throw new Exception("Impressora offline");
             }
-            
-            await _networkPrinter.WriteAsync(print);
+            _printer.Write(print);
         }
         else
         {
-            var status =  _serialPrinter?.GetStatus();
+            var status = _printer?.GetStatus();
             if (status == null || (!status.IsPrinterOnline ?? true))
             {
                 throw new Exception("Impressora offline");
             }
-            _serialPrinter!.Write(print);
+            _printer!.Write(print);
         }
-        
-        
+
+
     }
-    
+
+    private void Setup(bool enableStatusBackMonitoring)
+        {
+            if (_printer != null)
+            {
+                // Only register status monitoring once.
+                //if (!_hasEnabledStatusMonitoring)
+                //{
+                //    _printer.StatusChanged += StatusChanged;
+                //    _hasEnabledStatusMonitoring = true;
+                //}
+                _printer?.Write(e.Initialize());
+                _printer?.Write(e.Enable());
+                if (enableStatusBackMonitoring)
+                {
+                    _printer.Write(e.EnableAutomaticStatusBack());
+                }
+            }
+        }
+
 
     private byte[][] GetPrintItems(List<OrderItemModel> items)
     {
