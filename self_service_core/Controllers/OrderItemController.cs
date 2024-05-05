@@ -48,7 +48,7 @@ public class OrderItemController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetOrderItemsByStatus(OrderItemStatus status)
     {
-        var items = await _mongoDbService.GetOrderItemsByStatus(status);
+        var items = await _mongoDbService.GetOrderItemsByStatusWith24Hours(status);
         items.ForEach(item => item.Image = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", item.Image));
         return Ok(items);
     }

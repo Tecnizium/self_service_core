@@ -53,9 +53,17 @@ public class MongoDbService : IMongoDbService
     
     public async Task<List<OrderModel>> GetOrdersByStatus(OrderStatus status)
     {
-        // createAt < DateTime.Now.AddDays(-1)
+
         var orders = await _orders.Find(o => o.Status == status).ToListAsync();
-        //var orders = await _orders.Find(o => o.CreatedAt < DateTime.Now.AddDays(-30) && o.Status == status).ToListAsync();
+
+        return orders;
+    }
+    
+    public async Task<List<OrderModel>> GetOrdersByStatusWith24Hours(OrderStatus status)
+    {
+
+        var orders = await _orders.Find(o => o.CreatedAt > DateTime.Now.AddDays(-1) && o.Status == status).ToListAsync();
+
         return orders;
     }
     
@@ -99,6 +107,7 @@ public class MongoDbService : IMongoDbService
     {
         var order = await GetOrder(orderId);
         order.Status = status;
+        order.UpdatedAt = DateTime.Now;
         await UpdateOrder(order);
     }
     
@@ -135,11 +144,10 @@ public class MongoDbService : IMongoDbService
     }
     
     //Read
-    public async Task<List<OrderItemModel>> GetOrderItemsByStatus(OrderItemStatus status)
+    public async Task<List<OrderItemModel>> GetOrderItemsByStatusWith24Hours(OrderItemStatus status)
     {
         // createAt < DateTime.Now.AddDays(-1)
-        var orders = await _orders.Find(o => o.Items.Any(i => i.Status == status)).ToListAsync();
-        //var orders = await _orders.Find(o => o.CreatedAt < DateTime.Now.AddDays(-30) && o.Items.Any(i => i.Status == status)).ToListAsync();
+        var orders = await _orders.Find(o => o.CreatedAt > DateTime.Now.AddDays(-1) && o.Items.Any(i => i.Status == status)).ToListAsync();
         var items = new List<OrderItemModel>();
         foreach (var order in orders)
         {
@@ -182,6 +190,8 @@ public class MongoDbService : IMongoDbService
             order.Total = order.Total + item.Total;
         }
         item.Status = status;
+        
+        item.UpdatedAt = DateTime.Now;
         
         await UpdateOrder(order);
     }
@@ -227,6 +237,10 @@ public class MongoDbService : IMongoDbService
         foreach (var item in items)
         {
             var itemDb = await GetItem(item.Cod);
+            if (itemDb == null)
+            {
+                continue;
+            }
             itemsMostSold.Add(itemDb);
         }
         return itemsMostSold;
@@ -332,6 +346,10 @@ public class MongoDbService : IMongoDbService
         foreach (var item in items)
         {
             var itemDb = await GetItem(item.Cod);
+            if (itemDb == null)
+            {
+                continue;
+            }
             report.MostSoldItems.Add(new ReportItemModel
             {
                 ItemCod = item.Cod,

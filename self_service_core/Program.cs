@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.Azure.Cosmos;
 using Microsoft.IdentityModel.Tokens;
 using MongoDB.Driver;
 using self_service_core.Handler;
@@ -11,13 +10,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-//CosmosDB Client
-builder.Services.AddSingleton<CosmosClient>((s) => {
-    var config = s.GetRequiredService<IConfiguration>();
-    var connectionString = config["CosmosDb:ConnectionString"];
-    var client = new CosmosClient(connectionString);
-    return client;
-});
+
 
 //MongoDB Client
 builder.Services.AddSingleton<IMongoClient>((s) => {
@@ -30,14 +23,10 @@ builder.Services.AddSingleton<IMongoClient>((s) => {
 //MemoryCache
 builder.Services.AddMemoryCache();
 
-//CosmosDB Service
-builder.Services.AddSingleton<ICosmosDbService, CosmosDbService>();
 
 //MongoDB Service
 builder.Services.AddSingleton<IMongoDbService, MongoDbService>();
 
-//MemoryCache Service
-builder.Services.AddSingleton<IMemoryCacheService, MemoryCacheService>();
 
 //JwtToken Service
 builder.Services.AddSingleton<JwtTokenService>();

@@ -38,7 +38,6 @@ public class PrinterService : IPrinterService
     {
         //PT-BR
         var encoding = System.Text.Encoding.GetEncoding("UTF-8");
-        var e = new EPSON();
         var print = ByteSplicer.Combine([
                 e.CenterAlign(),
                 e.PrintLine("--------------------------------------------------"),
@@ -67,14 +66,13 @@ public class PrinterService : IPrinterService
             ]
         );
         
-        SendToPrinter(print, e);
+        SendToPrinter(print);
         return Task.CompletedTask;
     }
     
     public Task Print(OrderModel order)
     {
         var encoding = System.Text.Encoding.GetEncoding("UTF-8");
-        
         var print = ByteSplicer.Combine([
                 e.CenterAlign(),
                 e.PrintLine("--------------------------------------------------"),
@@ -101,18 +99,16 @@ public class PrinterService : IPrinterService
             ]
         );
         
-        SendToPrinter(print, e);
+        SendToPrinter(print);
         return Task.CompletedTask;
     }
 
-    private void SendToPrinter(byte[] print, ICommandEmitter e)
+    private void SendToPrinter(byte[] print)
     {
         //testPrint(print);
 
         if (_printer is NetworkPrinter)
         {
-           
-                
             _printer.Write(e.Initialize());
             _printer.Write(e.Enable());
             _printer.Write(e.EnableAutomaticStatusBack());
@@ -154,7 +150,7 @@ public class PrinterService : IPrinterService
                 _printer?.Write(e.Enable());
                 if (enableStatusBackMonitoring)
                 {
-                    _printer.Write(e.EnableAutomaticStatusBack());
+                    _printer?.Write(e.EnableAutomaticStatusBack());
                 }
             }
         }
@@ -163,7 +159,6 @@ public class PrinterService : IPrinterService
     private byte[][] GetPrintItems(List<OrderItemModel> items)
     {
         var encoding = System.Text.Encoding.GetEncoding("UTF-8");
-        var e = new EPSON();
         var printItens = new List<byte[]>();
         foreach (var item in items)
         {

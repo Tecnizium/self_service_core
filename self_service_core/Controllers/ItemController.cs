@@ -19,19 +19,36 @@ public class ItemController : Controller
     {
         _logger = logger;
         _mongoDbService = mongoDbService;
-        _imagePath = "http://"+ Dns.GetHostAddresses(Dns.GetHostName()).FirstOrDefault(ip => ip.AddressFamily == AddressFamily.InterNetwork).ToString() + ":5000/";
+        _imagePath = "http://192.168.0.138:5000/";
+        CreateImageFolder();
+    }
+    //create Image folder in wwwroot
+    private Task CreateImageFolder()
+    {
+        var folderPath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images");
+        if (!Directory.Exists(folderPath))
+        {
+            Directory.CreateDirectory(folderPath);
+        }
+
+        return Task.CompletedTask;
     }
     
-    private string SaveImage(IFormFile image)
+    private async Task<string> SaveImage(IFormFile image)
     {
         var imageFileName = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString() + image.FileName;
         //Save image
         var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", imageFileName);
-        using (var stream = new FileStream(filePath, FileMode.Create))
-        {
-            image.CopyToAsync(stream);
-        }
+        await using var stream = new FileStream(filePath, FileMode.Create);
+        await image.CopyToAsync(stream);
         return imageFileName;
+    }
+    
+    private Task DeleteImage(string imageFileName)
+    {
+        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", imageFileName);
+        System.IO.File.Delete(filePath);
+        return Task.CompletedTask;
     }
     
     //Create From Form
@@ -43,7 +60,7 @@ public class ItemController : Controller
         
         if (itemDto.Image != null)
         {
-            var imageFileName = SaveImage(itemDto.Image);
+            var imageFileName = await SaveImage(itemDto.Image);
             item.Image = imageFileName;
         }
         
@@ -140,10 +157,17 @@ public class ItemController : Controller
     public async Task<IActionResult> UpdateItem([FromForm]UpdateItemDto itemDto)
     {
         var item = new ItemModel(itemDto);
+        
+        
 
         if (itemDto.Image != null)
         {
-            var imageFileName = SaveImage(itemDto.Image);
+            //Delete old image
+            var oldItem = await _mongoDbService.GetItem(itemDto.Cod!);
+            await DeleteImage(oldItem.Image!);
+            
+            //Save new image
+            var imageFileName = await SaveImage(itemDto.Image);
             item.Image = imageFileName;
         }
        
@@ -157,8 +181,7 @@ public class ItemController : Controller
     public async Task<IActionResult> DeleteItem(string cod)
     {
         var item = await _mongoDbService.GetItem(cod);
-        var filePath = Path.Combine(Directory.GetCurrentDirectory(), "wwwroot", "images", item.Image);
-        System.IO.File.Delete(filePath);
+        await DeleteImage(item.Image!);
         await _mongoDbService.DeleteItem(cod);
         return Ok();
     }

@@ -13,25 +13,31 @@ public class OrderController : ControllerBase
 {
     private readonly ILogger<OrderController> _logger;
     private readonly IMongoDbService _mongoDbService;
-    private readonly ICosmosDbService _cosmosDbService;
-    private readonly IMemoryCacheService _memoryCacheService;
     private readonly IConfiguration _configuration;
 
-    public OrderController(ILogger<OrderController> logger, IMongoDbService mongoDbService,
-        ICosmosDbService cosmosDbService, IMemoryCacheService memoryCacheService, IConfiguration configuration)
+    public OrderController(ILogger<OrderController> logger, IMongoDbService mongoDbService, IConfiguration configuration)
     {
         _logger = logger;
         _mongoDbService = mongoDbService;
-        _cosmosDbService = cosmosDbService;
-        _memoryCacheService = memoryCacheService;
         _configuration = configuration;
-        //Timer timer = new Timer(SyncCosmosDb.Sync(), null, TimeSpan.Zero, TimeSpan.FromMinutes(1));
+        CloseOrders();
     }
+    
+    //Close all order created > 1 day
+    private async Task<Task> CloseOrders()
+    {
+        var orders = await _mongoDbService.GetOrdersByStatusWith24Hours(OrderStatus.Created);
+        orders.AddRange(await _mongoDbService.GetOrdersByStatusWith24Hours(OrderStatus.Processing));
+        foreach (var order in orders)
+        {
+            if (order.CreatedAt.AddDays(1) < DateTime.UtcNow)
+            {
+                await _mongoDbService.UpdateOrderStatus(order.OrderId, OrderStatus.Canceled);
+            }
+        }
 
-    //public void Sync(object? state)
-    //{
-    //    SyncCosmosDb.Sync(_mongoDbService, _cosmosDbService, _memoryCacheService, "12345678901234");
-    //}
+        return Task.CompletedTask;
+    }
 
     //Create
     [Authorize(Policy = "Basic")]
@@ -107,8 +113,9 @@ public class OrderController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetOrdersByStatus(OrderStatus status)
     {
-        var orders = await _mongoDbService.GetOrdersByStatus(status);
-
+        
+        var orders = await _mongoDbService.GetOrdersByStatusWith24Hours(status);
+        
         return Ok(orders);
     }
 
