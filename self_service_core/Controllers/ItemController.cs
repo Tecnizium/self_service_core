@@ -1,10 +1,13 @@
 using System.Net;
 using System.Net.Sockets;
+using System.Text.Json;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using self_service_core.DTOs;
 using self_service_core.Models;
 using self_service_core.Services;
+using Newtonsoft.Json.Linq;
+
 
 namespace self_service_core.Controllers;
 [ApiController]
@@ -13,15 +16,17 @@ public class ItemController : Controller
 {
     private readonly ILogger<ItemController> _logger;
     private readonly IMongoDbService _mongoDbService;
-    private readonly string _imagePath;
     
-    public ItemController(ILogger<ItemController> logger, IMongoDbService mongoDbService)
+    public ItemController(ILogger<ItemController> logger, IMongoDbService mongoDbService, IConfiguration config)
     {
         _logger = logger;
         _mongoDbService = mongoDbService;
-        _imagePath = "http://192.168.0.138:5000/";
         CreateImageFolder();
     }
+    
+
+
+
     //create Image folder in wwwroot
     private Task CreateImageFolder()
     {
@@ -77,7 +82,7 @@ public class ItemController : Controller
 
         if (item != null)
         {
-            var filePath = Path.Combine(_imagePath, "images", item.Image);
+            var filePath = Path.Combine("/images", item.Image);
             item.Image = filePath;
         }
         return Ok(item);
@@ -92,7 +97,7 @@ public class ItemController : Controller
         //Get image
         foreach (var item in items)
         {
-            var filePath = Path.Combine(_imagePath, "images", item.Image);
+            var filePath = Path.Combine("/images", item.Image);
             
             //add url
             //item.Image = "https://localhost:5000/" + filePath;
@@ -112,7 +117,7 @@ public class ItemController : Controller
         //Get image
         foreach (var item in items)
         {
-            var filePath = Path.Combine(_imagePath, "images", item.Image);
+            var filePath = Path.Combine("/images", item.Image);
             item.Image = filePath;
         }
         
@@ -128,7 +133,7 @@ public class ItemController : Controller
         //Get image
         foreach (var item in items)
         {
-            var filePath = Path.Combine(_imagePath, "images", item.Image);
+            var filePath = Path.Combine("/images", item.Image);
             item.Image = filePath;
         }
         
@@ -144,7 +149,7 @@ public class ItemController : Controller
         //Get image
         foreach (var item in items)
         {
-            var filePath = Path.Combine(_imagePath, "images", item.Image);
+            var filePath = Path.Combine("/images", item.Image);
             item.Image = filePath;
         }
         

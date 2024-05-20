@@ -26,13 +26,20 @@ public class OrderController : ControllerBase
     //Close all order created > 1 day
     private async Task<Task> CloseOrders()
     {
-        var orders = await _mongoDbService.GetOrdersByStatusWith24Hours(OrderStatus.Created);
-        orders.AddRange(await _mongoDbService.GetOrdersByStatusWith24Hours(OrderStatus.Processing));
+
+         List<OrderModel?> orders = await _mongoDbService.GetOrdersByStatusWithout24Hours(OrderStatus.Created);
+        orders.AddRange(await _mongoDbService.GetOrdersByStatusWithout24Hours(OrderStatus.Processing));
         foreach (var order in orders)
         {
-            if (order.CreatedAt.AddDays(1) < DateTime.UtcNow)
+            if (order != null && order.CreatedAt.AddDays(1) < DateTime.UtcNow)
             {
+                var orderItems =  order.Items.Where(e => e.Status is OrderItemStatus.Processing or OrderItemStatus.Created).ToList();
+                foreach (var orderItem in orderItems)
+                {
+                    await _mongoDbService.UpdateOrderItemStatus(order.OrderId, orderItem.ItemId, OrderItemStatus.Canceled);
+                }
                 await _mongoDbService.UpdateOrderStatus(order.OrderId, OrderStatus.Canceled);
+                
             }
         }
 

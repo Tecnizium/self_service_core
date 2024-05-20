@@ -12,7 +12,8 @@ public interface IMongoDbService
     Task<OrderModel> GetOrder(string orderId);
     Task<List<OrderModel>> GetOrders();
     Task<List<OrderModel>> GetOrdersByStatus(OrderStatus status);
-    Task<List<OrderModel>> GetOrdersByStatusWith24Hours(OrderStatus status);
+    Task<List<OrderModel?>> GetOrdersByStatusWith24Hours(OrderStatus status);
+    Task<List<OrderModel?>> GetOrdersByStatusWithout24Hours(OrderStatus status);
     Task<List<OrderModel>> GetOrdersByMonth(DateTime month);
     Task<List<OrderModel>> GetOrdersByDay(DateTime dateTime);
     Task<List<OrderModel>> GetOrdersByCompanyCnpjAndLastDateTime(string companyCnpj, DateTime dateTime);
@@ -31,6 +32,7 @@ public interface IMongoDbService
     Task AddOrderItemsToOrder(string orderId, List<OrderItemModel> items);
     //Read
     Task<List<OrderItemModel>> GetOrderItemsByStatusWith24Hours(OrderItemStatus status);
+    Task<List<OrderItemModel>> GetOrderItemsByStatusWithout24Hours(OrderItemStatus status);
     Task<OrderItemModel?> GetOrderItemById(string itemId);
     //Update
     Task UpdateOrderItemStatus(string orderId, string itemId, OrderItemStatus status);

@@ -59,10 +59,18 @@ public class MongoDbService : IMongoDbService
         return orders;
     }
     
-    public async Task<List<OrderModel>> GetOrdersByStatusWith24Hours(OrderStatus status)
+    public async Task<List<OrderModel?>> GetOrdersByStatusWith24Hours(OrderStatus status)
     {
 
         var orders = await _orders.Find(o => o.CreatedAt > DateTime.Now.AddDays(-1) && o.Status == status).ToListAsync();
+
+        return orders;
+    }
+    
+    public async Task<List<OrderModel?>> GetOrdersByStatusWithout24Hours(OrderStatus status)
+    {
+
+        var orders = await _orders.Find(o => o.CreatedAt < DateTime.Now.AddDays(-1) && o.Status == status).ToListAsync();
 
         return orders;
     }
@@ -94,6 +102,7 @@ public class MongoDbService : IMongoDbService
     public async Task<OrderModel?> GetLastOrderByCardNumber(int cardNumber)
     {
         var orders = await _orders.Find(o => o.CardNumber == cardNumber).ToListAsync();
+        
         return orders.LastOrDefault();
     }
     
@@ -148,6 +157,25 @@ public class MongoDbService : IMongoDbService
     {
         // createAt < DateTime.Now.AddDays(-1)
         var orders = await _orders.Find(o => o.CreatedAt > DateTime.Now.AddDays(-1) && o.Items.Any(i => i.Status == status)).ToListAsync();
+        var items = new List<OrderItemModel>();
+        foreach (var order in orders)
+        {
+            items.AddRange(order.Items.Where(i => i.Status == status).Select(
+                e =>
+                {
+                    e.OrderId = order.OrderId;
+                    e.CardNumber = order.CardNumber;
+                    return e;
+                
+                }));
+        }
+        return items;
+    }
+    
+    public async Task<List<OrderItemModel>> GetOrderItemsByStatusWithout24Hours(OrderItemStatus status)
+    {
+        // createAt < DateTime.Now.AddDays(-1)
+        var orders = await _orders.Find(o => o.CreatedAt < DateTime.Now.AddDays(-1) && o.Items.Any(i => i.Status == status)).ToListAsync();
         var items = new List<OrderItemModel>();
         foreach (var order in orders)
         {
