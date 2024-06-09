@@ -11,35 +11,35 @@ public class PrinterController : ControllerBase
 {
     private readonly ILogger<PrinterController> _logger;
     private readonly IMongoDbService _mongoDbService;
-    
+
     public PrinterController(ILogger<PrinterController> logger, IMongoDbService mongoDbService)
     {
         _logger = logger;
         _mongoDbService = mongoDbService;
     }
-    
-    
-    
-    
+
+
+
+
     [HttpPost]
     public async Task<IActionResult> PrintItem(string id)
     {
         OrderItemModel? orderItem = await _mongoDbService.GetOrderItemById(id);
-        
+
         if (orderItem == null)
         {
             return BadRequest("Order item not found");
         }
-        
-        
+
+
         List<PrinterModel> printers = await _mongoDbService.GetPrinters(orderItem.CategoryId);
-        
+
         if (printers.Count == 0)
         {
             return BadRequest("No printer found");
         }
-        
-        
+
+
         foreach (var printer in printers)
         {
             PrinterService printerService = new PrinterService(printer);
@@ -51,12 +51,12 @@ public class PrinterController : ControllerBase
             {
                 return BadRequest(e.Message);
             }
-            
+
         }
         return Ok();
-        
+
     }
-    
+
     [HttpPost]
     public async Task<IActionResult> PrintOrder(string id)
     {
@@ -69,14 +69,33 @@ public class PrinterController : ControllerBase
             await printerService.Print(order);
         }
         return Ok();
-        
+
     }
-    
+
     [HttpPost]
-    public IActionResult AddPrinter([FromBody] PrinterModel printer)
+    public IActionResult AddPrinters([FromBody] IEnumerable<PrinterModel> printer)
     {
-        _mongoDbService.CreatePrinter(printer);
+        foreach (var printerModel in printer)
+        {
+            _mongoDbService.CreatePrinter(printerModel);
+        }
         return Ok();
     }
-    
+
+    [HttpDelete]
+    public IActionResult DeletePrinter(string printerIP)
+    {
+
+        _mongoDbService.DeletePrinter(printerIP);
+
+        return Ok();
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetPrinters()
+    {
+        var printers = await _mongoDbService.GetPrinters(null);
+        return Ok(printers);
+    }
+
 }

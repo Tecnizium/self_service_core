@@ -59,6 +59,10 @@ public class OrderItemController : ControllerBase
     public async Task<IActionResult> UpdateOrderItemStatus([FromBody] UpdateOrderItemStatusDto updateOrderItemStatusDto)
     {
         await _mongoDbService.UpdateOrderItemStatus(updateOrderItemStatusDto.OrderId, updateOrderItemStatusDto.OrderItemId, updateOrderItemStatusDto.Status);
+        if (updateOrderItemStatusDto.Status == OrderItemStatus.Processing)
+        {
+            await PrintItem(updateOrderItemStatusDto.OrderItemId);
+        }
         return Ok();
     }
     
@@ -69,5 +73,26 @@ public class OrderItemController : ControllerBase
     {
         await _mongoDbService.DeleteOrderItem(orderId, itemId);
         return Ok();
+    }
+
+    private async Task PrintItem(String id)
+    {
+        OrderItemModel? orderItem = await _mongoDbService.GetOrderItemById(id);
+        
+        List<PrinterModel> printers = await _mongoDbService.GetPrinters(orderItem.CategoryId);
+        
+        
+        foreach (var printer in printers)
+        {
+            PrinterService printerService = new PrinterService(printer);
+            try
+            {
+                await printerService.Print(orderItem);
+            }
+            catch (Exception e)
+            {
+            }
+            
+        }
     }
 }

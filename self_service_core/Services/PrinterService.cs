@@ -109,9 +109,7 @@ public class PrinterService : IPrinterService
 
         if (_printer is NetworkPrinter)
         {
-            _printer.Write(e.Initialize());
-            _printer.Write(e.Enable());
-            _printer.Write(e.EnableAutomaticStatusBack());
+            
             Setup(true);
             
             var isOnline = true;
@@ -146,11 +144,11 @@ public class PrinterService : IPrinterService
                 //    _printer.StatusChanged += StatusChanged;
                 //    _hasEnabledStatusMonitoring = true;
                 //}
-                _printer?.Write(e.Initialize());
-                _printer?.Write(e.Enable());
+                e.Initialize();
+                e.Enable();
                 if (enableStatusBackMonitoring)
                 {
-                    _printer?.Write(e.EnableAutomaticStatusBack());
+                    e.EnableAutomaticStatusBack();
                 }
             }
         }

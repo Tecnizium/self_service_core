@@ -13,7 +13,7 @@ public class OrderController : ControllerBase
 {
     private readonly ILogger<OrderController> _logger;
     private readonly IMongoDbService _mongoDbService;
-    private readonly IConfiguration _configuration;
+    private readonly IConfiguration _configuration; 
 
     public OrderController(ILogger<OrderController> logger, IMongoDbService mongoDbService, IConfiguration configuration)
     {
@@ -142,6 +142,16 @@ public class OrderController : ControllerBase
     public async Task<IActionResult> UpdateOrderStatus([FromBody] UpdateOrderStatusDto updateOrderStatusDto)
     {
         await _mongoDbService.UpdateOrderStatus(updateOrderStatusDto.OrderId, updateOrderStatusDto.Status);
+        if (updateOrderStatusDto.Status == OrderStatus.Processing)
+        {
+            var order = await _mongoDbService.GetOrder(updateOrderStatusDto.OrderId);
+            var items = order.Items.Where(e => e.Status != OrderItemStatus.Canceled);
+            foreach (var item in items)
+            {
+                await _mongoDbService.UpdateOrderItemStatus(order.OrderId, item.ItemId, OrderItemStatus.Done);
+            }
+            await PrintOrder(updateOrderStatusDto.OrderId);
+        }
 
         return Ok();
     }
@@ -154,6 +164,18 @@ public class OrderController : ControllerBase
         await _mongoDbService.DeleteOrder(orderId);
 
         return Ok();
+    }
+    
+    private async Task PrintOrder(String id)
+    {
+        OrderModel order = await _mongoDbService.GetOrder(id);
+        List<PrinterModel> printers = await _mongoDbService.GetPrinters(null);
+        printers = printers.Where(printer => printer.isDefault ?? false).ToList();
+        foreach (var printer in printers)
+        {
+            PrinterService printerService = new PrinterService(printer);
+            await printerService.Print(order);
+        }
     }
     
 

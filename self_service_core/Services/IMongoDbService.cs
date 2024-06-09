@@ -83,6 +83,45 @@ public interface IMongoDbService
     Task CreatePrinter(PrinterModel printer);
     //Read
     Task<List<PrinterModel>> GetPrinters(string? categoryId);
-    
+    //Delete
+    Task<bool> DeletePrinter(string ip);
 
+    //Emitente
+    //Create
+    Task CreateEmitente(EmitenteModel emitente);
+    //Read
+    Task<EmitenteModel?> GetEmitente();
+    //Update
+    Task UpdateEmitente(EmitenteModel emitente);
+    
+    
+    //Waiter
+    //Create
+    Task CreateWaiter(WaiterModel waiter);
+    
+    //Read
+    Task<IEnumerable<WaiterModel>> GetWaiters();
+    //Update
+    Task UpdateWaiter(WaiterModel waiter);
+    //Delete
+    Task DeleteWaiter(string waiterId);
+    
+    
+    //Rating
+    //Create
+    Task CreateRating(RatingModel rating);
+    
+    //Read
+    Task<IEnumerable<RatingModel>> GetRatings();
+    
+    //Update
+    Task UpdateRating(RatingModel rating);
+    //Delete
+    Task DeleteRating(string ratingId);
+    
+    //Answers Rating
+    Task CreateAnswerRating(AnswerRatingModel answerRating);
+    Task<IEnumerable<AnswerRatingModel>> GetAnswerRatingByDay(DateTime day);
+    Task<IEnumerable<AnswerRatingModel>> GetAnswerRatingByMonth(DateTime month);
+    
 }

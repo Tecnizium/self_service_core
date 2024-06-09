@@ -19,8 +19,9 @@ public class OrderModel
     public List<OrderItemModel> Items { get; set; }
     public double? Value { get; set; }
     public double Discount { get; set; }
-    public double? Fee { get; set; }
     public double? Total { get; set; }
+    
+    public string? ServedBy { get; set; }
     public DateTime CreatedAt { get; set; }
     public DateTime UpdatedAt { get; set; }
     public OrderStatus Status { get; set; }
@@ -55,9 +56,9 @@ public class OrderModel
         this.CompanyCnpj = configuration.GetSection("Company").GetSection("Cnpj").Value;
         this.CompanyName = configuration.GetSection("Company").GetSection("Name").Value;
         this.Value = 0.0;
-        this.Fee = 0.0;
         this.Discount = 0.0;
         this.Total = 0.0;
+        this.ServedBy = createOrderDto.ServedBy;
     }
     
 }
