@@ -27,6 +27,9 @@ builder.Services.AddMemoryCache();
 //MongoDB Service
 builder.Services.AddSingleton<IMongoDbService, MongoDbService>();
 
+//Printer Service
+builder.Services.AddSingleton<IPrinterService, PrinterService>();
+
 
 //JwtToken Service
 builder.Services.AddSingleton<JwtTokenService>();

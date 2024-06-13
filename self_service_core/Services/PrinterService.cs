@@ -9,183 +9,231 @@ namespace self_service_core.Services;
 
 public class PrinterService : IPrinterService
 {
-    
-    private readonly BasePrinter? _printer;
-    private readonly ICommandEmitter e;
-    
-    public PrinterService(PrinterModel printer)
+
+    private IEnumerable<NetworkPrinter>? _connectedPrinters;
+    private IEnumerable<NetworkPrinter>? _selectedPrinters;
+    private readonly ICommandEmitter _e = new EPSON();
+    readonly Encoding _encoding = Encoding.UTF8;
+    private readonly IMongoDbService _mongoDbService;
+
+    public PrinterService(IMongoDbService mongoDbService)
     {
-        // verify if host is IP
-        if (!IPAddress.TryParse(printer.Host, out _))
+        _mongoDbService = mongoDbService;
+        _connectedPrinters = new List<NetworkPrinter>();
+    }
+    
+    public async Task<IEnumerable<PrinterModel>> GetPrinters(OrderModel order)
+    {
+        IEnumerable<PrinterModel> printers = await _mongoDbService.GetPrinters(null);
+        printers = printers.Where(printer => printer.isDefault ?? false).ToList();
+        return printers;
+    }
+    
+    public async Task<IEnumerable<PrinterModel>> GetPrinters(OrderItemModel orderItem)
+    {
+        IEnumerable<PrinterModel> printers = await _mongoDbService.GetPrinters(orderItem.CategoryId);
+        return printers;
+    }
+    
+    
+    public async Task<Task> VerifyPrinters(IEnumerable<PrinterModel> printers)
+    {
+        _selectedPrinters = new List<NetworkPrinter>();
+        foreach (var printer in printers)
         {
-            _printer = new SerialPrinter(portName: printer.Host, baudRate: int.Parse(printer.Port));
+            if (!_connectedPrinters.Any(p => p.PrinterName == printer.Name))
+            {
+                await SetPrinter(printer);
+            }
+
+            _selectedPrinters = _selectedPrinters.Append(_connectedPrinters.First(p => p.PrinterName == printer.Name));
         }
-        else
+        return Task.CompletedTask;
+    }
+    
+    public async Task SendToPrinters(OrderModel order)
+    {
+        IEnumerable<PrinterModel> printers = await GetPrinters(order);
+        await VerifyPrinters(printers);
+        foreach (var printer in _selectedPrinters)
         {
-            _printer = new NetworkPrinter(new NetworkPrinterSettings() { ConnectionString = $"{printer.Host}:{printer.Port}" });
+            await Print(order, printer);
+        }
+        
+    }
+    
+    public async Task SendToPrinters(OrderItemModel orderItem)
+    {
+        IEnumerable<PrinterModel> printers = await GetPrinters(orderItem);
+        await VerifyPrinters(printers);
+        foreach (var printer in _selectedPrinters)
+        {
+            await Print(orderItem, printer);
+        }
+        
+    }
+    
+    
+    
+    public async Task<NetworkPrinter> SetPrinter(PrinterModel printer)
+    {
+        NetworkPrinter _printer = new NetworkPrinter(new NetworkPrinterSettings() { ConnectionString = $"{printer.Host}:{printer.Port}", PrinterName = printer.Name });
+        _printer.Connected += (sender, args) => Console.WriteLine("Connected to printer");
+        _printer.Disconnected += (sender, args) => Console.WriteLine("Disconnected from printer");
+        _printer.StatusChanged += StatusChanged!;
+
+        if (_connectedPrinters != null)
+        {
+            _connectedPrinters = _connectedPrinters.Append(_printer);
         }
 
-        e = new EPSON();
-        
-        
-        var factory = LoggerFactory.Create(b => b.AddConsole().SetMinimumLevel(LogLevel.Information));
-        var logger = factory.CreateLogger<Program>();
-        ESCPOS_NET.Logging.Logger = logger;
+        return _printer;
     }
 
 
-    public Task Print(OrderItemModel orderItem)
+    public Task Print(OrderItemModel orderItem, NetworkPrinter printer)
     {
         //PT-BR
-        var encoding = System.Text.Encoding.GetEncoding("UTF-8");
+        
         var print = ByteSplicer.Combine([
-                e.CenterAlign(),
-                e.PrintLine("--------------------------------------------------"),
-                e.PrintLine("Pedido "+ orderItem.ItemId),
-                e.PrintLine("Data e Hora: "+ orderItem.CreatedAt.ToString("dd/MM/yyyy HH:mm")),
-                e.PrintLine("--------------------------------------------------"),
-                e.PrintLine("Mesa: "+ orderItem.CardNumber),
-                e.PrintLine("--------------------------------------------------"),
-                e.LeftAlign(),
-                encoding.GetBytes("Item: "+ orderItem.Name),
-                e.PrintLine(""),
-                e.PrintLine("Quantidade: "+ orderItem.Quantity),
-                encoding.GetBytes("Preço: R$ "+ orderItem.Price?.ToString("F2")),
-                e.PrintLine(""),
-                e.PrintLine(""),
-                encoding.GetBytes("Adicionais: "+ (orderItem.Additionals.Count > 0 ? string.Join(", ", orderItem.Additionals.Select(additional => additional.Name)) : "Nenhum adicional selecionado")), 
-                e.PrintLine(""),
-                encoding.GetBytes("Observação: "+ (string.IsNullOrEmpty(orderItem.Observation) ? "Nenhuma observação" : orderItem.Observation)),
-                e.PrintLine(""),
-                e.CenterAlign(),
-                e.PrintLine("--------------------------------------------------"),
-                e.LeftAlign(),
-                e.PrintLine("Total: R$ "+ orderItem.Total?.ToString("F2")),
-                e.CenterAlign(),
-                e.PrintLine("--------------------------------------------------"),
+                _e.CenterAlign(),
+                _e.PrintLine("--------------------------------------------------"),
+                _e.PrintLine("Pedido "+ orderItem.ItemId),
+                _e.PrintLine("Data e Hora: "+ orderItem.CreatedAt.ToString("dd/MM/yyyy HH:mm")),
+                _e.PrintLine("--------------------------------------------------"),
+                _e.PrintLine("Mesa: "+ orderItem.CardNumber),
+                _e.PrintLine("--------------------------------------------------"),
+                _e.LeftAlign(),
+                _encoding.GetBytes("Item: "+ orderItem.Name),
+                _e.PrintLine(""),
+                _e.PrintLine("Quantidade: "+ orderItem.Quantity),
+                _encoding.GetBytes("Preço: R$"+ (orderItem.IsPromotion ?? false ? orderItem.PromotionPrice?.ToString("F2") : orderItem.Price?.ToString("F2"))),
+                _e.PrintLine(""),
+                _e.PrintLine(""),
+                _encoding.GetBytes("Adicionais: "+ (orderItem.Additionals.Count > 0 ? string.Join(", ", orderItem.Additionals.Select(additional => additional.Name)) : "Nenhum adicional selecionado")),
+                _e.PrintLine(""),
+                _encoding.GetBytes("Observação: "+ (string.IsNullOrEmpty(orderItem.Observation) ? "Nenhuma observação" : orderItem.Observation)),
+                _e.PrintLine(""),
+                _e.CenterAlign(),
+                _e.PrintLine("--------------------------------------------------"),
+                _e.LeftAlign(),
+                _e.PrintLine("SubTotal: R$"+ orderItem.Total?.ToString("F2")),
+                _e.CenterAlign(),
+                _e.PrintLine("--------------------------------------------------"),
             ]
         );
-        
-        SendToPrinter(print);
-        return Task.CompletedTask;
-    }
-    
-    public Task Print(OrderModel order)
-    {
-        var encoding = System.Text.Encoding.GetEncoding("UTF-8");
-        var print = ByteSplicer.Combine([
-                e.CenterAlign(),
-                e.PrintLine("--------------------------------------------------"),
-                e.PrintLine("Comanda "+ order.OrderId),
-                e.PrintLine("Data e Hora: "+ order.CreatedAt.ToString("dd/MM/yyyy HH:mm")),
-                e.PrintLine("--------------------------------------------------"),
-                e.PrintLine("Mesa: "+ order.CardNumber),
-                e.PrintLine("--------------------------------------------------"),
-                e.LeftAlign(),
-                ..GetPrintItems(order.Items),
-                e.PrintLine(""),
-                e.PrintLine(""),
-                e.PrintLine(""),
-                e.CenterAlign(),
-                e.PrintLine("--------------------------------------------------"),
-                e.LeftAlign(),
-                e.PrintLine("Total: R$ "+ order.Total?.ToString("F2")),
-                e.CenterAlign(),
-                e.PrintLine("--------------------------------------------------"),
-                encoding.GetBytes("Obrigado pela preferência!"),
-                e.PrintLine(""),
-                e.PrintLine("Volte sempre!"),
-                e.PrintLine("--------------------------------------------------"),
-            ]
-        );
-        
-        SendToPrinter(print);
+
+        SendToPrinter(print, printer);
         return Task.CompletedTask;
     }
 
-    private void SendToPrinter(byte[] print)
+    public Task Print(OrderModel order, NetworkPrinter printer)
+    {
+        
+        var print = ByteSplicer.Combine([
+                _e.CenterAlign(),
+                _e.PrintLine("--------------------------------------------------"),
+                _e.PrintLine("Comanda "+ order.OrderId),
+                _e.PrintLine("Data e Hora: "+ order.CreatedAt.ToString("dd/MM/yyyy HH:mm")),
+                _e.PrintLine("--------------------------------------------------"),
+                _e.PrintLine("Mesa: "+ order.CardNumber),
+                _e.PrintLine("--------------------------------------------------"),
+                _e.LeftAlign(),
+                ..GetPrintItems(order.Items),
+                _e.PrintLine(""),
+                _e.PrintLine(""),
+                _e.PrintLine(""),
+                _e.CenterAlign(),
+                _e.PrintLine("--------------------------------------------------"),
+                _e.LeftAlign(),
+                _e.PrintLine("Total: R$"+ order.Total?.ToString("F2")),
+                _e.CenterAlign(),
+                _e.PrintLine("--------------------------------------------------"),
+                _encoding.GetBytes("Obrigado pela preferência, " + order.Name + "!"),
+                _e.PrintLine(""),
+                _e.PrintLine("Volte sempre!"),
+                _e.PrintLine("--------------------------------------------------"),
+            ]
+        );
+
+        SendToPrinter(print, printer);
+        return Task.CompletedTask;
+    }
+
+    private void SendToPrinter(byte[] print, NetworkPrinter printer)
     {
         //testPrint(print);
 
-        if (_printer is NetworkPrinter)
-        {
-            
-            Setup(true);
-            
-            var isOnline = true;
-                           //_printer.GetStatus().IsPrinterOnline ?? false;
-
-            if (!isOnline)
-            {
-                throw new Exception("Impressora offline");
-            }
-            _printer.Write(print);
-        }
-        else
-        {
-            var status = _printer?.GetStatus();
-            if (status == null || (!status.IsPrinterOnline ?? true))
-            {
-                throw new Exception("Impressora offline");
-            }
-            _printer!.Write(print);
-        }
-
+        Setup(printer);
+        printer!.Write(print);
+        TestPrint(print);
+        Teardown(printer);
 
     }
 
-    private void Setup(bool enableStatusBackMonitoring)
+    private void Setup(NetworkPrinter printer)
+    {
+        if (printer != null)
         {
-            if (_printer != null)
-            {
-                // Only register status monitoring once.
-                //if (!_hasEnabledStatusMonitoring)
-                //{
-                //    _printer.StatusChanged += StatusChanged;
-                //    _hasEnabledStatusMonitoring = true;
-                //}
-                e.Initialize();
-                e.Enable();
-                if (enableStatusBackMonitoring)
-                {
-                    e.EnableAutomaticStatusBack();
-                }
-            }
+            _e.Initialize();
+            _e.Enable();
+
         }
+    }
+    
+    private void Teardown(NetworkPrinter printer)
+    {
+        if (printer != null)
+        {
+            _e.FullCut();
+            _e.Disable();
+        }
+    }
 
 
     private byte[][] GetPrintItems(List<OrderItemModel> items)
     {
-        var encoding = System.Text.Encoding.GetEncoding("UTF-8");
+        
         var printItens = new List<byte[]>();
         foreach (var item in items)
         {
             printItens.Add(ByteSplicer.Combine([
-                e.LeftAlign(),
-                encoding.GetBytes("Item: "+ item.Name),
-                e.PrintLine(""),
-                e.PrintLine("Quantidade: "+ item.Quantity),
-                encoding.GetBytes("Preço: R$ "+ item.Price?.ToString("F2")),
-                e.PrintLine(""),
-                e.PrintLine(""),
-                encoding.GetBytes("Adicionais: "+ (item.Additionals.Count > 0 ? string.Join(", ", item.Additionals.Select(additional => additional.Name)) : "Nenhum adicional selecionado")), 
-                e.PrintLine(""),
-                encoding.GetBytes("Observação: "+ (string.IsNullOrEmpty(item.Observation) ? "Nenhuma observação" : item.Observation)),
-                e.PrintLine(""),
-                e.PrintLine(""),
-                e.PrintLine("Total: R$"+ item.Total?.ToString("F2")),
-                e.CenterAlign(),
-                e.PrintLine("--------------------------------------------------"),
+                _e.LeftAlign(),
+                _encoding.GetBytes("Item: "+ item.Name),
+                _e.PrintLine(""),
+                _e.PrintLine("Quantidade: "+ item.Quantity),
+                _encoding.GetBytes("Preço: R$"+ (item.IsPromotion ?? false ? item.PromotionPrice?.ToString("F2") : item.Price?.ToString("F2"))),
+                _e.PrintLine(""),
+                _e.PrintLine(""),
+                _encoding.GetBytes("Adicionais: "+ (item.Additionals.Count > 0 ? string.Join(", ", item.Additionals.Select(additional => additional.Name)) : "Nenhum adicional selecionado")),
+                _e.PrintLine(""),
+                _encoding.GetBytes("Observação: "+ (string.IsNullOrEmpty(item.Observation) ? "Nenhuma observação" : item.Observation)),
+                _e.PrintLine(""),
+                _e.PrintLine(""),
+                _e.PrintLine("SubTotal: R$"+ item.Total?.ToString("F2")),
+                _e.CenterAlign(),
+                _e.PrintLine("--------------------------------------------------"),
             ]));
         }
         return printItens.ToArray();
-        
+
+    }
+    
+    static void StatusChanged(object sender, EventArgs ps)
+    {
+        var status = (PrinterStatusEventArgs)ps;
+        Console.WriteLine($"Status: {status.IsPrinterOnline}");
+        Console.WriteLine($"Has Paper? {status.IsPaperOut}");
+        Console.WriteLine($"Paper Running Low? {status.IsPaperLow}");
+        Console.WriteLine($"Cash Drawer Open? {status.IsCashDrawerOpen}");
+        Console.WriteLine($"Cover Open? {status.IsCoverOpen}");
     }
 
-    private void testPrint(byte[] print)
+    private void TestPrint(byte[] print)
     {
         Console.WriteLine("Teste de impressão");
         Console.WriteLine(Encoding.UTF8.GetString(print));
     }
+    
     
 }

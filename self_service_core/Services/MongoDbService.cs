@@ -144,8 +144,9 @@ public class MongoDbService : IMongoDbService
     {
         var order = await GetOrder(orderId);
         var item = await GetItem(orderItem.Cod);
-        (order, orderItem) = CalculateFee.CalculateFeeValue(order, orderItem, item);
+        orderItem.ItemDetails(item, order);
         order.Items.Add(orderItem);
+        order.CalculateTotal();
         await UpdateOrder(order);
     }
 
@@ -157,10 +158,11 @@ public class MongoDbService : IMongoDbService
         {
 
             var itemDb = await GetItem(item.Cod);
-            (order, var orderItem) = CalculateFee.CalculateFeeValue(order, item, itemDb);
-            orderItem.CardNumber = order.CardNumber;
-            order.Items.Add(orderItem);
+            item.ItemDetails(itemDb, order);
+
+            order.Items.Add(item);
         }
+        order.CalculateTotal();
         await UpdateOrder(order);
     }
 
@@ -285,18 +287,18 @@ public class MongoDbService : IMongoDbService
             }
             itemsMostSold.Add(itemDb);
         }
-        return itemsMostSold;
+        return itemsMostSold.Where(i => i.IsAvailable == true).ToList();
     }
 
     public async Task<List<ItemModel>> GetItemsPromotion()
     {
-        var items = await _items.Find(i => i.IsPromotion == true).ToListAsync();
+        var items = await _items.Find(i => i.IsPromotion == true && i.IsAvailable == true).ToListAsync();
         return items;
     }
 
     public async Task<List<ItemModel>> GetItemsHighlight()
     {
-        var items = await _items.Find(i => i.IsHighlight == true).ToListAsync();
+        var items = await _items.Find(i => i.IsHighlight == true && i.IsAvailable == true).ToListAsync();
         return items;
     }
 

@@ -45,6 +45,17 @@ public class OrderItemModel : ItemModel
         }
     }
 
+    public void ItemDetails(ItemModel item, OrderModel order)
+    {
+        this.Name = item.Name;
+        this.Price = item.Price;
+        this.PromotionPrice = item.PromotionPrice;
+        this.IsPromotion = item.IsPromotion;
+        this.Image = item.Image;
+        this.CardNumber = order.CardNumber;
+        CalculateTotal();
+    }
+
 }
 
 public enum OrderItemStatus

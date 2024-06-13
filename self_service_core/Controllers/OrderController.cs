@@ -14,17 +14,19 @@ public class OrderController : ControllerBase
     private readonly ILogger<OrderController> _logger;
     private readonly IMongoDbService _mongoDbService;
     private readonly IConfiguration _configuration; 
+    private readonly IPrinterService _printerService;
 
-    public OrderController(ILogger<OrderController> logger, IMongoDbService mongoDbService, IConfiguration configuration)
+    public OrderController(ILogger<OrderController> logger, IMongoDbService mongoDbService, IConfiguration configuration, IPrinterService printerService)
     {
         _logger = logger;
         _mongoDbService = mongoDbService;
         _configuration = configuration;
+        _printerService = (PrinterService) printerService;
         CloseOrders();
     }
     
     //Close all order created > 1 day
-    private async Task<Task> CloseOrders()
+    private async void CloseOrders()
     {
 
          List<OrderModel?> orders = await _mongoDbService.GetOrdersByStatusWithout24Hours(OrderStatus.Created);
@@ -42,8 +44,6 @@ public class OrderController : ControllerBase
                 
             }
         }
-
-        return Task.CompletedTask;
     }
 
     //Create
@@ -169,13 +169,7 @@ public class OrderController : ControllerBase
     private async Task PrintOrder(String id)
     {
         OrderModel order = await _mongoDbService.GetOrder(id);
-        List<PrinterModel> printers = await _mongoDbService.GetPrinters(null);
-        printers = printers.Where(printer => printer.isDefault ?? false).ToList();
-        foreach (var printer in printers)
-        {
-            PrinterService printerService = new PrinterService(printer);
-            await printerService.Print(order);
-        }
+        await _printerService.SendToPrinters(order);
     }
     
 

@@ -60,6 +60,12 @@ public class OrderModel
         this.Total = 0.0;
         this.ServedBy = createOrderDto.ServedBy;
     }
+
+    public void CalculateTotal()
+    {
+        Value = Items.Where(item => item.Status != OrderItemStatus.Canceled).Sum(item => item.Total);
+        Total = Value - Discount;
+    }
     
 }
 

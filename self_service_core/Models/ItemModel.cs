@@ -12,6 +12,8 @@ public class ItemModel
     public string? Image { get; set; }
     public string? Description { get; set; }
     public double? PromotionPrice { get; set; }
+
+    public bool? IsAvailable { get; set; } = true;
     public bool? IsPromotion { get; set; }
     public bool? IsHighlight { get; set; }
     public List<AdditionalItemModel> Additionals { get; set; } = new List<AdditionalItemModel>();
@@ -23,13 +25,14 @@ public class ItemModel
         
     }
     
-    public ItemModel(string? name, double? price, string? image, string? description, double? promotionPrice, bool isPromotion, bool isHighlight, List<AdditionalItemModel> additionals, string? categoryId)
+    public ItemModel(string? name, double? price, string? image, string? description, double? promotionPrice, bool isAvailable, bool isPromotion, bool isHighlight, List<AdditionalItemModel> additionals, string? categoryId)
     {
         this.Name = name;
         this.Price = price;
         this.Image = image;
         this.Description = description;
         this.PromotionPrice = promotionPrice;
+        this.IsAvailable = isAvailable;
         this.IsPromotion = isPromotion;
         this.IsHighlight = isHighlight;
         this.Additionals = additionals;
@@ -43,6 +46,7 @@ public class ItemModel
         this.Image = item.Image?.FileName;
         this.Description = item.Description;
         this.PromotionPrice = item.PromotionPrice;
+        this.IsAvailable = item.isAvailable;
         this.IsPromotion = item.IsPromotion;
         this.IsHighlight = item.IsHighlight;
         this.Additionals = item.Additionals.Select(additional => new AdditionalItemModel(additional)).ToList();
@@ -57,6 +61,7 @@ public class ItemModel
         this.Image = item.Image?.FileName;
         this.Description = item.Description;
         this.PromotionPrice = item.PromotionPrice;
+        this.IsAvailable = item.isAvailable;
         this.IsPromotion = item.IsPromotion;
         this.IsHighlight = item.IsHighlight;
         this.Additionals = item.Additionals.Select(additional => new AdditionalItemModel(additional)).ToList();

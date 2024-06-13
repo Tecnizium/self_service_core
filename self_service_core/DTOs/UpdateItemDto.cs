@@ -10,6 +10,8 @@ public class UpdateItemDto
     public string? Description { get; set; }
     
     public double? PromotionPrice { get; set; }
+
+    public bool? isAvailable { get; set; }
     
     public bool? IsPromotion { get; set; }
     

@@ -11,11 +11,13 @@ public class OrderItemController : ControllerBase
 {
     private readonly ILogger<OrderItemController> _logger;
     private readonly IMongoDbService _mongoDbService;
+    private readonly IPrinterService _printerService;
     
-    public OrderItemController(ILogger<OrderItemController> logger, IMongoDbService mongoDbService)
+    public OrderItemController(ILogger<OrderItemController> logger, IMongoDbService mongoDbService, IPrinterService printerService)
     {
         _logger = logger;
         _mongoDbService = mongoDbService;
+        _printerService = (PrinterService) printerService;
     }
     
     //Create
@@ -78,21 +80,7 @@ public class OrderItemController : ControllerBase
     private async Task PrintItem(String id)
     {
         OrderItemModel? orderItem = await _mongoDbService.GetOrderItemById(id);
-        
-        List<PrinterModel> printers = await _mongoDbService.GetPrinters(orderItem.CategoryId);
-        
-        
-        foreach (var printer in printers)
-        {
-            PrinterService printerService = new PrinterService(printer);
-            try
-            {
-                await printerService.Print(orderItem);
-            }
-            catch (Exception e)
-            {
-            }
-            
-        }
+
+        if (orderItem != null) await _printerService.SendToPrinters(orderItem);
     }
 }
